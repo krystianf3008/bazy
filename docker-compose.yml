@@ -153,7 +153,28 @@ services:
       - warszawa3
 
   # ----------------------------------------------------
-  # 7. BACKUP AGENT (IP: 172.20.0.8)
+  # 7. PGADMIN (IP: 172.20.0.9, port 5050)
+  # ----------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    networks:
+      ppv_net:
+        ipv4_address: 172.20.0.9
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ppv.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - pg_pgadmin:/var/lib/pgadmin
+    depends_on:
+      - warszawa1
+    restart: always
+
+  # ----------------------------------------------------
+  # 8. BACKUP AGENT (IP: 172.20.0.8)
   #    - Niedzielny backup pełny (pg_basebackup)
   #    - Dzienny backup różnicowy (pg_dump)
   #    - Dzienny backup logów WAL
@@ -186,3 +207,4 @@ volumes:
   pg_backups_full:
   pg_backups_diff:
   pg_backups_logs:
+  pg_pgadmin:
