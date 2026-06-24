@@ -5,7 +5,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.17.0.0/16
+        - subnet: 172.20.0.0/16
 
 services:
   # ----------------------------------------------------
@@ -16,7 +16,7 @@ services:
     container_name: warszawa1_master
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.2
+        ipv4_address: 172.20.0.2
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: SuperSecretPassword!
@@ -35,7 +35,7 @@ services:
     container_name: warszawa2_read1
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.3
+        ipv4_address: 172.20.0.3
     depends_on:
       - warszawa1
     environment:
@@ -44,12 +44,12 @@ services:
       - pg_data_read1:/var/lib/postgresql/data
     command: >
       bash -c "
-      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
         echo 'Klonowanie Mastera...';
-        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
         touch /var/lib/postgresql/data/standby.signal;
-        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+        echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
       fi;
       exec docker-entrypoint.sh postgres
       "
@@ -62,7 +62,7 @@ services:
     container_name: warszawa3_read2
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.4
+        ipv4_address: 172.20.0.4
     depends_on:
       - warszawa1
     environment:
@@ -71,11 +71,11 @@ services:
       - pg_data_read2:/var/lib/postgresql/data
     command: >
       bash -c "
-      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
-        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
         touch /var/lib/postgresql/data/standby.signal;
-        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+        echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
       fi;
       exec docker-entrypoint.sh postgres
       "
@@ -88,7 +88,7 @@ services:
     container_name: krakow_dr
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.5
+        ipv4_address: 172.20.0.5
     depends_on:
       - warszawa1
     environment:
@@ -98,25 +98,25 @@ services:
       - pg_archive:/archive
     command: >
       bash -c "
-      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
-        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
         touch /var/lib/postgresql/data/standby.signal;
-        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+        echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
         echo \"restore_command = 'cp /archive/%f %p'\" >> /var/lib/postgresql/data/postgresql.conf;
       fi;
       exec docker-entrypoint.sh postgres
       "
 
   # ----------------------------------------------------
-  # 5. HAPROXY - ZAPIS (IP: 172.17.0.6, port 5432)
+  # 5. HAPROXY - ZAPIS (IP: 172.20.0.6, port 5432)
   # ----------------------------------------------------
   haproxy_write:
     image: haproxy:2.4
     container_name: haproxy_write
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.6
+        ipv4_address: 172.20.0.6
     ports:
       - "5432:5432" # Dostępne na zewnątrz na porcie 5432
     volumes:
@@ -125,14 +125,14 @@ services:
       - warszawa1
 
   # ----------------------------------------------------
-  # 6. HAPROXY - ODCZYT (IP: 172.17.0.7, port 5433)
+  # 6. HAPROXY - ODCZYT (IP: 172.20.0.7, port 5433)
   # ----------------------------------------------------
   haproxy_read:
     image: haproxy:2.4
     container_name: haproxy_read
     networks:
       ppv_net:
-        ipv4_address: 172.17.0.7
+        ipv4_address: 172.20.0.7
     ports:
       - "5433:5433" # Dostępne na zewnątrz na porcie 5433
     volumes:
@@ -141,9 +141,37 @@ services:
       - warszawa2
       - warszawa3
 
+  # ----------------------------------------------------
+  # 7. BACKUP AGENT (IP: 172.20.0.8)
+  #    - Niedzielny backup pełny (pg_basebackup)
+  #    - Dzienny backup różnicowy (pg_dump)
+  #    - Dzienny backup logów WAL
+  # ----------------------------------------------------
+  backup_agent:
+    image: postgres:15
+    container_name: backup_agent
+    networks:
+      ppv_net:
+        ipv4_address: 172.20.0.8
+    depends_on:
+      - warszawa1
+    environment:
+      PGPASSWORD: ReplicaPass123!
+    volumes:
+      - ./backup:/backup:ro
+      - pg_archive:/archive:ro
+      - pg_backups_full:/backups/full
+      - pg_backups_diff:/backups/diff
+      - pg_backups_logs:/backups/logs
+    entrypoint: ["/backup/entrypoint.sh"]
+    restart: always
+
 volumes:
   pg_data_master:
   pg_data_read1:
   pg_data_read2:
   pg_data_dr:
   pg_archive:
+  pg_backups_full:
+  pg_backups_diff:
+  pg_backups_logs:

@@ -15,12 +15,12 @@ cat > "$PGDATA/pg_hba.conf" <<-EOF
 local   all             postgres                                peer
 local   all             all                                     scram-sha-256
 # Pozwalamy kontu postgres na dostęp z sieci wew. (potrzebne do monitoringu)
-host    all             postgres        172.17.0.0/16           scram-sha-256
+host    all             postgres        172.20.0.0/16           scram-sha-256
 # Dostęp dla replikacji
-host    replication     repl_user       172.17.0.0/16           scram-sha-256
-# Zezwolenie na połączenia TYLKO przez HAProxy WRITE (172.17.0.6) i READ (172.17.0.7)
-host    ppv_db          all             172.17.0.6/32           scram-sha-256
-host    ppv_db          all             172.17.0.7/32           scram-sha-256
+host    replication     repl_user       172.20.0.0/16           scram-sha-256
+# Zezwolenie na połączenia TYLKO przez HAProxy WRITE (172.20.0.6) i READ (172.20.0.7)
+host    ppv_db          all             172.20.0.6/32           scram-sha-256
+host    ppv_db          all             172.20.0.7/32           scram-sha-256
 EOF
 
 # 3. Parametry postgresql.conf dla replikacji i wydajności
