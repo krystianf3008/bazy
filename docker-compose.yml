@@ -148,7 +148,7 @@ services:
   #    - Dzienny backup logów WAL
   # ----------------------------------------------------
   backup_agent:
-    image: postgres:15
+    build: ./backup
     container_name: backup_agent
     networks:
       ppv_net:
@@ -163,7 +163,7 @@ services:
       - pg_backups_full:/backups/full
       - pg_backups_diff:/backups/diff
       - pg_backups_logs:/backups/logs
-    entrypoint: ["/backup/entrypoint.sh"]
+    entrypoint: ["bash", "/backup/entrypoint.sh"]
     restart: always
 
 volumes:

@@ -1,8 +1,8 @@
 # Weekly full backup — Sundays at 02:00
-0 2 * * 0 /backup/full_backup.sh >> /var/log/backup_full.log 2>&1
+0 2 * * 0 bash /backup/full_backup.sh >> /var/log/backup_full.log 2>&1
 
 # Daily differential (logical dump) — every day at 03:00
-0 3 * * * /backup/diff_backup.sh >> /var/log/backup_diff.log 2>&1
+0 3 * * * bash /backup/diff_backup.sh >> /var/log/backup_diff.log 2>&1
 
 # Daily WAL log archive — every day at 04:00
-0 4 * * * /backup/wal_log_backup.sh >> /var/log/backup_wal.log 2>&1
+0 4 * * * bash /backup/wal_log_backup.sh >> /var/log/backup_wal.log 2>&1
