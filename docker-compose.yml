@@ -156,7 +156,48 @@ services:
       - warszawa3
 
   # ----------------------------------------------------
-  # 7. PGADMIN (IP: 172.20.0.9, port 5050)
+  # 7. WATCHDOG - automatyczny failover Warszawa1 -> Krakow DR (IP: 172.20.0.10)
+  # ----------------------------------------------------
+  watchdog:
+    image: postgres:15
+    container_name: watchdog
+    networks:
+      ppv_net:
+        ipv4_address: 172.20.0.10
+    depends_on:
+      - warszawa1
+      - krakow_dr
+    environment:
+      PGPASSWORD: SuperSecretPassword!
+    command: >
+      bash -c "
+      echo '[Watchdog] Start - monitorowanie Warszawa1 (172.20.0.2)';
+      FAIL=0;
+      PROMOTED=0;
+      while true; do
+        if pg_isready -h 172.20.0.2 -p 5432 -t 2 > /dev/null 2>&1; then
+          if [ $$FAIL -gt 0 ]; then echo '[Watchdog] Warszawa1 ponownie dostepna.'; fi;
+          FAIL=0;
+        else
+          FAIL=$$((FAIL+1));
+          echo \"[Watchdog] Warszawa1 nie odpowiada - proba $$FAIL/2\";
+          if [ $$FAIL -ge 2 ] && [ $$PROMOTED -eq 0 ]; then
+            echo '[Watchdog] Promuje Krakow DR na mastera...';
+            if psql -h 172.20.0.5 -U postgres -c 'SELECT pg_promote(wait := true);' 2>/dev/null; then
+              PROMOTED=1;
+              echo '[Watchdog] Krakow DR jest teraz masterem!';
+            else
+              echo '[Watchdog] Blad promocji - ponowie za 2s.';
+            fi;
+          fi;
+        fi;
+        sleep 2;
+      done
+      "
+    restart: always
+
+  # ----------------------------------------------------
+  # 8. PGADMIN (IP: 172.20.0.9, port 5050)
   # ----------------------------------------------------
   pgadmin:
     image: dpage/pgadmin4
