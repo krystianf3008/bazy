@@ -1,0 +1,149 @@
+version: '3.8'
+
+networks:
+  ppv_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.17.0.0/16
+
+services:
+  # ----------------------------------------------------
+  # 1. WARSZAWA 1 (MASTER - WRITE)
+  # ----------------------------------------------------
+  warszawa1:
+    image: postgres:15
+    container_name: warszawa1_master
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: SuperSecretPassword!
+      POSTGRES_DB: ppv_db
+    volumes:
+      - ./postgres_init:/docker-entrypoint-initdb.d
+      - pg_data_master:/var/lib/postgresql/data
+      - pg_archive:/archive
+    restart: always
+
+  # ----------------------------------------------------
+  # 2. WARSZAWA 2 (STANDBY - READ 1)
+  # ----------------------------------------------------
+  warszawa2:
+    image: postgres:15
+    container_name: warszawa2_read1
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.3
+    depends_on:
+      - warszawa1
+    environment:
+      PGPASSWORD: ReplicaPass123!
+    volumes:
+      - pg_data_read1:/var/lib/postgresql/data
+    command: >
+      bash -c "
+      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
+        echo 'Klonowanie Mastera...';
+        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        touch /var/lib/postgresql/data/standby.signal;
+        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+      fi;
+      exec docker-entrypoint.sh postgres
+      "
+
+  # ----------------------------------------------------
+  # 3. WARSZAWA 3 (STANDBY - READ 2)
+  # ----------------------------------------------------
+  warszawa3:
+    image: postgres:15
+    container_name: warszawa3_read2
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.4
+    depends_on:
+      - warszawa1
+    environment:
+      PGPASSWORD: ReplicaPass123!
+    volumes:
+      - pg_data_read2:/var/lib/postgresql/data
+    command: >
+      bash -c "
+      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
+        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        touch /var/lib/postgresql/data/standby.signal;
+        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+      fi;
+      exec docker-entrypoint.sh postgres
+      "
+
+  # ----------------------------------------------------
+  # 4. KRAKÓW (DISASTER RECOVERY / BACKUP)
+  # ----------------------------------------------------
+  krakow_dr:
+    image: postgres:15
+    container_name: krakow_dr
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.5
+    depends_on:
+      - warszawa1
+    environment:
+      PGPASSWORD: ReplicaPass123!
+    volumes:
+      - pg_data_dr:/var/lib/postgresql/data
+      - pg_archive:/archive
+    command: >
+      bash -c "
+      until pg_isready -h 172.17.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
+      if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
+        pg_basebackup -h 172.17.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        touch /var/lib/postgresql/data/standby.signal;
+        echo \"primary_conninfo = 'host=172.17.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
+        echo \"restore_command = 'cp /archive/%f %p'\" >> /var/lib/postgresql/data/postgresql.conf;
+      fi;
+      exec docker-entrypoint.sh postgres
+      "
+
+  # ----------------------------------------------------
+  # 5. HAPROXY - ZAPIS (IP: 172.17.0.6, port 5432)
+  # ----------------------------------------------------
+  haproxy_write:
+    image: haproxy:2.4
+    container_name: haproxy_write
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.6
+    ports:
+      - "5432:5432" # Dostępne na zewnątrz na porcie 5432
+    volumes:
+      - ./haproxy/haproxy_write.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - warszawa1
+
+  # ----------------------------------------------------
+  # 6. HAPROXY - ODCZYT (IP: 172.17.0.7, port 5433)
+  # ----------------------------------------------------
+  haproxy_read:
+    image: haproxy:2.4
+    container_name: haproxy_read
+    networks:
+      ppv_net:
+        ipv4_address: 172.17.0.7
+    ports:
+      - "5433:5433" # Dostępne na zewnątrz na porcie 5433
+    volumes:
+      - ./haproxy/haproxy_read.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - warszawa2
+      - warszawa3
+
+volumes:
+  pg_data_master:
+  pg_data_read1:
+  pg_data_read2:
+  pg_data_dr:
+  pg_archive:
