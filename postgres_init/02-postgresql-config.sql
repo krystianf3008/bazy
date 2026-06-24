@@ -1,0 +1,9 @@
+ALTER SYSTEM SET listen_addresses = '*';
+ALTER SYSTEM SET password_encryption = 'scram-sha-256';
+ALTER SYSTEM SET wal_level = 'replica';
+ALTER SYSTEM SET max_wal_senders = 10;
+ALTER SYSTEM SET max_replication_slots = 10;
+ALTER SYSTEM SET wal_keep_size = '128MB';
+ALTER SYSTEM SET hot_standby = on;
+ALTER SYSTEM SET archive_mode = on;
+ALTER SYSTEM SET archive_command = 'cp %p /archive/%f';

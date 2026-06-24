@@ -25,6 +25,9 @@ services:
       - ./postgres_init:/docker-entrypoint-initdb.d
       - pg_data_master:/var/lib/postgresql/data
       - pg_archive:/archive
+      - ./postgres_master/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: >
+      bash -c "mkdir -p /archive && chown postgres:postgres /archive && exec docker-entrypoint.sh postgres -c hba_file=/etc/postgresql/pg_hba.conf"
     restart: always
 
   # ----------------------------------------------------
