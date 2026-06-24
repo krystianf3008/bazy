@@ -40,14 +40,17 @@ services:
       - warszawa1
     environment:
       PGPASSWORD: ReplicaPass123!
+      POSTGRES_PASSWORD: ReplicaPass123!
     volumes:
       - pg_data_read1:/var/lib/postgresql/data
     command: >
       bash -c "
-      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
-        echo 'Klonowanie Mastera...';
-        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        until pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream; do
+          echo 'pg_basebackup nie powiodlo sie, czyszcze i ponawiam za 5s...';
+          rm -rf /var/lib/postgresql/data/*;
+          sleep 5;
+        done;
         touch /var/lib/postgresql/data/standby.signal;
         echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
       fi;
@@ -67,13 +70,17 @@ services:
       - warszawa1
     environment:
       PGPASSWORD: ReplicaPass123!
+      POSTGRES_PASSWORD: ReplicaPass123!
     volumes:
       - pg_data_read2:/var/lib/postgresql/data
     command: >
       bash -c "
-      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
-        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        until pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream; do
+          echo 'pg_basebackup nie powiodlo sie, czyszcze i ponawiam za 5s...';
+          rm -rf /var/lib/postgresql/data/*;
+          sleep 5;
+        done;
         touch /var/lib/postgresql/data/standby.signal;
         echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
       fi;
@@ -93,14 +100,18 @@ services:
       - warszawa1
     environment:
       PGPASSWORD: ReplicaPass123!
+      POSTGRES_PASSWORD: ReplicaPass123!
     volumes:
       - pg_data_dr:/var/lib/postgresql/data
       - pg_archive:/archive
     command: >
       bash -c "
-      until pg_isready -h 172.20.0.2 -p 5432 -U postgres; do echo 'Oczekiwanie na Mastera...'; sleep 2; done;
       if [ -z \"$$(ls -A /var/lib/postgresql/data)\" ]; then
-        pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream;
+        until pg_basebackup -h 172.20.0.2 -D /var/lib/postgresql/data -U repl_user -vP -w --wal-method=stream; do
+          echo 'pg_basebackup nie powiodlo sie, czyszcze i ponawiam za 5s...';
+          rm -rf /var/lib/postgresql/data/*;
+          sleep 5;
+        done;
         touch /var/lib/postgresql/data/standby.signal;
         echo \"primary_conninfo = 'host=172.20.0.2 port=5432 user=repl_user password=ReplicaPass123!'\" >> /var/lib/postgresql/data/postgresql.conf;
         echo \"restore_command = 'cp /archive/%f %p'\" >> /var/lib/postgresql/data/postgresql.conf;
