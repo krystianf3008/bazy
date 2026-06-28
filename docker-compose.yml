@@ -133,6 +133,7 @@ services:
         ipv4_address: 172.20.0.6
     ports:
       - "5432:5432" # Dostępne na zewnątrz na porcie 5432
+      - "8404:8404" # Dashboard HAProxy Zapis
     volumes:
       - ./haproxy/haproxy_write.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
@@ -149,6 +150,7 @@ services:
         ipv4_address: 172.20.0.7
     ports:
       - "5433:5433" # Dostępne na zewnątrz na porcie 5433
+      - "8405:8404" # Dashboard HAProxy Odczyt
     volumes:
       - ./haproxy/haproxy_read.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
