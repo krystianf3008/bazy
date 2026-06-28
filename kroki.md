@@ -10,6 +10,8 @@ warszawa3 (STANDBY 2)       │
 krakow_dr (DR / BACKUP)     ┘    watchdog ──▶ failover na krakow_dr
 backup_agent                     (pełny, różnicowy, WAL)
 pgadmin                          http://localhost:5050
+stats read:                      http://localhost:8405/haproxy?stats (admin:admin123)
+stats write:                     http://localhost:8404/haproxy?stats (admin:admin123)
 ```
 
 ---
