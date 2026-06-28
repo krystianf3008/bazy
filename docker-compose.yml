@@ -177,7 +177,7 @@ services:
       FAIL=0;
       PROMOTED=0;
       while true; do
-        if pg_isready -h 172.20.0.2 -p 5432 -t 2 > /dev/null 2>&1; then
+        if pg_isready -h 172.20.0.2 -p 5432 -U postgres -t 2 > /dev/null 2>&1; then
           if [ $$FAIL -gt 0 ]; then echo '[Watchdog] Warszawa1 ponownie dostepna.'; fi;
           FAIL=0;
         else
