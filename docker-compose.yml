@@ -197,6 +197,23 @@ services:
     restart: always
 
   # ----------------------------------------------------
+  # 9. KLIENT (psql do testów przez HAProxy)
+  # ----------------------------------------------------
+  klient:
+    image: postgres:15
+    container_name: klient
+    networks:
+      ppv_net:
+        ipv4_address: 172.20.0.11
+    depends_on:
+      - haproxy_write
+      - haproxy_read
+    environment:
+      PGPASSWORD: Admin123!
+    entrypoint: ["sleep", "infinity"]
+    restart: always
+
+  # ----------------------------------------------------
   # 8. PGADMIN (IP: 172.20.0.9, port 5050)
   # ----------------------------------------------------
   pgadmin:
