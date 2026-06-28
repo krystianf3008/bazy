@@ -32,8 +32,7 @@ docker compose ps
 
 ```bash
 # Status replikacji na masterze — widać podłączone standbys
-docker exec -u postgres -it warszawa1_master psql -U postgres -c \
-  "SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM pg_stat_replication;"
+docker exec -u postgres -it warszawa1_master psql -U postgres -c "SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM pg_stat_replication;"
 
 # Potwierdzenie, że standby jest w trybie hot_standby
 docker exec -u postgres -it warszawa2_read1 psql -U postgres -c "SELECT pg_is_in_recovery();"
@@ -49,11 +48,10 @@ docker exec -u postgres -it krakow_dr psql -U postgres -c "SELECT pg_is_in_recov
 
 ```bash
 # Wstaw event przez mastera (haproxy_write 172.20.0.6:5432)
-docker exec -it klient psql -h 172.20.0.6 -p 5432 -U admin1 -d ppv_db -c \
-  "INSERT INTO streaming.events(title, event_date, price) VALUES ('Finał PPV 2026', '2026-07-01 20:00', 49.99);"
+docker exec -it klient psql -h 172.20.0.6 -p 5432 -U postgres -d ppv_db -c "INSERT INTO streaming.events(title, event_date, price) VALUES ('Finał PPV 2026', '2026-07-01 20:00', 49.99);"
 
 # Odczytaj z repliki przez haproxy_read (172.20.0.7:5433)
-docker exec -it klient psql -h 172.20.0.7 -p 5433 -U admin1 -d ppv_db -c "SELECT * FROM streaming.events;"
+docker exec -it klient psql -h 172.20.0.7 -p 5433 -U postgres -d ppv_db -c "SELECT * FROM streaming.events;"
 ```
 
 ---
@@ -62,9 +60,7 @@ docker exec -it klient psql -h 172.20.0.7 -p 5433 -U admin1 -d ppv_db -c "SELECT
 
 ```bash
 # Każde kolejne zapytanie trafia na inny węzeł (warszawa2 / warszawa3)
-for i in 1 2 3 4; do
-  docker exec -it klient psql -h 172.20.0.7 -p 5433 -U admin1 -d ppv_db -c "SELECT inet_server_addr();" 2>/dev/null
-done
+for i in 1 2 3 4; do docker exec -it klient psql -h 172.20.0.7 -p 5433 -U postgres -d ppv_db -c "SELECT inet_server_addr();" 2>/dev/null; done
 ```
 
 ---
@@ -90,8 +86,7 @@ docker compose stop warszawa1
 docker logs -f watchdog
 
 # Po promocji — zapis idzie teraz do krakow_dr przez haproxy_write
-psql -h localhost -p 5432 -U admin1 -d ppv_db -c \
-  "INSERT INTO streaming.events(title, event_date, price) VALUES ('Powrót po awarii', '2026-08-01 18:00', 29.99);"
+docker exec -it klient psql -h 172.20.0.6 -p 5432 -U postgres -d ppv_db -c "INSERT INTO streaming.events(title, event_date, price) VALUES ('Powrót po awarii', '2026-08-01 18:00', 29.99);"
 
 # Weryfikacja — krakow_dr jest teraz masterem
 docker exec -u postgres -it krakow_dr psql -U postgres -c "SELECT pg_is_in_recovery();"
@@ -116,16 +111,16 @@ docker logs warszawa1_master --tail 30
 
 ```bash
 # Lista wykonanych backupów pełnych (niedzielny, pg_basebackup)
-docker exec -u postgres -it backup_agent ls -lh /backups/full/
+docker exec -it backup_agent ls -lh /backups/full/
 
 # Lista backupów różnicowych (pg_dump, codziennie 03:00)
-docker exec -u postgres -it backup_agent ls -lh /backups/diff/
+docker exec -it backup_agent ls -lh /backups/diff/
 
 # Lista zarchiwizowanych logów WAL (codziennie 04:00)
-docker exec -u postgres -it backup_agent ls -lh /backups/logs/
+docker exec -it backup_agent ls -lh /backups/logs/
 
 # Ręczne wywołanie backupu pełnego bez czekania na cron
-docker exec -u postgres -it backup_agent bash /backup/full_backup.sh
+docker exec -it backup_agent bash /backup/full_backup.sh
 ```
 
 ---

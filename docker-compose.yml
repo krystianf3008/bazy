@@ -180,16 +180,19 @@ services:
         if pg_isready -h 172.20.0.2 -p 5432 -U postgres -t 2 > /dev/null 2>&1; then
           if [ $$FAIL -gt 0 ]; then echo '[Watchdog] Warszawa1 ponownie dostepna.'; fi;
           FAIL=0;
+          PROMOTED=0;
         else
-          FAIL=$$((FAIL+1));
-          echo \"[Watchdog] Warszawa1 nie odpowiada - proba $$FAIL/2\";
-          if [ $$FAIL -ge 2 ] && [ $$PROMOTED -eq 0 ]; then
-            echo '[Watchdog] Promuje Krakow DR na mastera...';
-            if psql -h 172.20.0.5 -U postgres -c 'SELECT pg_promote(wait := true);' 2>/dev/null; then
-              PROMOTED=1;
-              echo '[Watchdog] Krakow DR jest teraz masterem!';
-            else
-              echo '[Watchdog] Blad promocji - ponowie za 2s.';
+          if [ $$PROMOTED -eq 0 ]; then
+            FAIL=$$((FAIL+1));
+            echo \"[Watchdog] Warszawa1 nie odpowiada - proba $$FAIL/2\";
+            if [ $$FAIL -ge 2 ]; then
+              echo '[Watchdog] Promuje Krakow DR na mastera...';
+              if psql -h 172.20.0.5 -U postgres -c 'SELECT pg_promote(wait := true);' 2>/dev/null; then
+                PROMOTED=1;
+                echo '[Watchdog] Krakow DR jest teraz masterem!';
+              else
+                echo '[Watchdog] Blad promocji - ponowie za 2s.';
+              fi;
             fi;
           fi;
         fi;
@@ -211,7 +214,7 @@ services:
       - haproxy_write
       - haproxy_read
     environment:
-      PGPASSWORD: Admin123!
+      PGPASSWORD: SuperSecretPassword!
     entrypoint: ["sleep", "infinity"]
     restart: always
 
